@@ -251,22 +251,42 @@
         <img id="modalImage" class="modal-content">
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCyNA_vXcdC8dLS6Grm9zXxgLRFPHxguno",
+            authDomain: "telesecundaria-galeria.firebaseapp.com",
+            projectId: "telesecundaria-galeria",
+            storageBucket: "telesecundaria-galeria.firebasestorage.app",
+            messagingSenderId: "685854118647",
+            appId: "1:269888511624:web:52c7e40296e6d787a352fd",
+            measurementId: "G-Z6IZZkWSB9"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
         let allFiles = [];
         let currentFilter = 'all';
 
-        async function loadGallery() {
+        window.loadGallery = async function() {
             try {
-                const result = await window.storage.get('telesecundaria-files', true);
-                allFiles = result ? JSON.parse(result.value) : [];
+                const q = query(collection(db, 'archivos'), orderBy('timestamp', 'desc'));
+                const querySnapshot = await getDocs(q);
+                allFiles = [];
+                querySnapshot.forEach((doc) => {
+                    allFiles.push({ id: doc.id, ...doc.data() });
+                });
                 console.log('Archivos cargados:', allFiles.length);
                 displayGallery(allFiles);
             } catch (error) {
-                console.log('No hay archivos aún');
+                console.error('Error al cargar archivos:', error);
                 allFiles = [];
                 displayGallery([]);
             }
-        }
+        };
 
         function displayGallery(files) {
             const gallery = document.getElementById('gallery');
@@ -326,7 +346,7 @@
             }).join('');
         }
 
-        function filterGallery(type) {
+        window.filterGallery = function(type) {
             currentFilter = type;
             
             document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -340,29 +360,29 @@
                 const filtered = allFiles.filter(file => file.type === type);
                 displayGallery(filtered);
             }
-        }
+        };
 
-        function openImageModal(url) {
+        window.openImageModal = function(url) {
             document.getElementById('imageModal').style.display = 'flex';
             document.getElementById('modalImage').src = url;
-        }
+        };
 
-        function closeModal() {
+        window.closeModal = function() {
             document.getElementById('imageModal').style.display = 'none';
-        }
+        };
 
-        function downloadFile(url, title) {
+        window.downloadFile = function(url, title) {
             const link = document.createElement('a');
             link.href = url;
             link.download = title;
             link.target = '_blank';
             link.click();
-        }
+        };
 
         // Cargar galería al inicio
         loadGallery();
         
-        // Recargar cada 30 segundos para ver nuevos archivos
+        // Recargar cada 30 segundos
         setInterval(loadGallery, 30000);
     </script>
 </body>
