@@ -128,6 +128,18 @@
             float: right;
         }
         
+        .delete-btn {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+            margin-top: 5px;
+            width: 100%;
+        }
+        
         .instructions {
             background: #fff3cd;
             padding: 20px;
@@ -194,8 +206,8 @@
             <strong>📌 Instrucciones:</strong>
             <ul style="margin-left: 20px; margin-top: 10px;">
                 <li>Haz clic en "Subir Archivos" para agregar fotos, videos o documentos</li>
-                <li>Los archivos se guardarán en Cloudinary automáticamente</li>
-                <li>Comparte el link de la galería de alumnos con tus estudiantes</li>
+                <li>Los archivos se guardarán automáticamente y serán visibles para todos los alumnos</li>
+                <li>Puedes eliminar archivos con el botón "Eliminar"</li>
             </ul>
         </div>
 
@@ -210,7 +222,7 @@
             <p id="uploadStatus"></p>
         </div>
 
-        <h2 style="margin-top: 30px;">📁 Archivos Subidos Recientemente</h2>
+        <h2 style="margin-top: 30px;">📁 Archivos Subidos</h2>
         <div id="gallery" class="gallery"></div>
     </div>
 
@@ -219,18 +231,34 @@
         const UPLOAD_PRESET = 'telesecundaria_preset';
         const PASSWORD = 'telesecundaria';
         
-        // Verificar configuración
-        console.log('Cloud Name:', CLOUD_NAME);
-        console.log('Upload Preset:', UPLOAD_PRESET);
-        
-        let uploadedFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+        let uploadedFiles = [];
+
+        async function loadFiles() {
+            try {
+                const result = await window.storage.get('telesecundaria-files', true);
+                uploadedFiles = result ? JSON.parse(result.value) : [];
+                console.log('Archivos cargados:', uploadedFiles.length);
+            } catch (error) {
+                console.log('No hay archivos guardados aún');
+                uploadedFiles = [];
+            }
+        }
+
+        async function saveFiles() {
+            try {
+                await window.storage.set('telesecundaria-files', JSON.stringify(uploadedFiles), true);
+                console.log('Archivos guardados exitosamente');
+            } catch (error) {
+                console.error('Error al guardar:', error);
+            }
+        }
 
         function login() {
             const password = document.getElementById('passwordInput').value;
             if (password === PASSWORD) {
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('mainScreen').style.display = 'block';
-                loadGallery();
+                loadFiles().then(() => loadGallery());
             } else {
                 document.getElementById('loginError').textContent = '❌ Contraseña incorrecta';
             }
@@ -275,24 +303,23 @@
                         }
                     );
                     
-                    console.log('Respuesta:', response.status);
-                    
                     if (response.ok) {
                         const data = await response.json();
                         console.log('Éxito:', data);
                         uploaded++;
                         
-                        // Guardar info del archivo
                         const fileInfo = {
+                            id: Date.now() + i,
                             url: data.secure_url,
                             type: data.resource_type,
                             format: data.format,
                             name: file.name,
-                            date: new Date().toLocaleDateString('es-ES')
+                            date: new Date().toLocaleDateString('es-ES'),
+                            timestamp: Date.now()
                         };
                         
                         uploadedFiles.unshift(fileInfo);
-                        localStorage.setItem('uploadedFiles', JSON.stringify(uploadedFiles));
+                        await saveFiles();
                         
                         progressBar.style.width = `${(uploaded / total) * 100}%`;
                         statusEl.textContent = `✅ Subido ${uploaded} de ${total} archivos`;
@@ -319,9 +346,16 @@
                 }, 2000);
             }
             
-            // Limpiar input
             e.target.value = '';
         });
+
+        async function deleteFile(fileId) {
+            if (!confirm('¿Estás seguro de eliminar este archivo?')) return;
+            
+            uploadedFiles = uploadedFiles.filter(f => f.id !== fileId);
+            await saveFiles();
+            loadGallery();
+        }
 
         function loadGallery() {
             const gallery = document.getElementById('gallery');
@@ -329,15 +363,15 @@
             if (uploadedFiles.length === 0) {
                 gallery.innerHTML = `
                     <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #666;">
-                        <p style="font-size: 50px;">📭</p>
-                        <p style="margin-top: 10px;">Aún no has subido archivos</p>
+                        <p style="font-size: 50px;">🔭</p>
+                        <p style="margin-top: 10px;">Aún no hay archivos</p>
                         <p style="margin-top: 5px; font-size: 14px;">Los archivos que subas aparecerán aquí</p>
                     </div>
                 `;
                 return;
             }
             
-            gallery.innerHTML = uploadedFiles.slice(0, 12).map(file => {
+            gallery.innerHTML = uploadedFiles.map(file => {
                 if (file.type === 'image') {
                     return `
                         <div class="gallery-item">
@@ -345,6 +379,7 @@
                             <div class="item-info">
                                 <div style="font-weight: bold; color: #333;">${file.name}</div>
                                 <div style="color: #999; font-size: 11px;">${file.date}</div>
+                                <button class="delete-btn" onclick="deleteFile(${file.id})">🗑️ Eliminar</button>
                             </div>
                         </div>
                     `;
@@ -357,6 +392,7 @@
                             <div class="item-info">
                                 <div style="font-weight: bold; color: #333;">${file.name}</div>
                                 <div style="color: #999; font-size: 11px;">${file.date}</div>
+                                <button class="delete-btn" onclick="deleteFile(${file.id})">🗑️ Eliminar</button>
                             </div>
                         </div>
                     `;
@@ -367,6 +403,7 @@
                             <div class="item-info">
                                 <div style="font-weight: bold; color: #333;">${file.name}</div>
                                 <div style="color: #999; font-size: 11px;">${file.date}</div>
+                                <button class="delete-btn" onclick="deleteFile(${file.id})">🗑️ Eliminar</button>
                             </div>
                         </div>
                     `;
@@ -374,7 +411,6 @@
             }).join('');
         }
 
-        // Permitir login con Enter
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('passwordInput').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
