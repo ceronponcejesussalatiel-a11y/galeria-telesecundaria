@@ -40,6 +40,21 @@
             margin-bottom: 30px;
             text-align: center;
         }
+
+        .back-btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+        }
         
         .gallery {
             display: grid;
@@ -191,19 +206,36 @@
             font-size: 40px;
             cursor: pointer;
         }
+
+        .refresh-btn {
+            background: #2ed573;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .refresh-btn:hover {
+            background: #26de81;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <a href="index.html" class="back-btn">← Volver al inicio</a>
+        
         <h1>🏫 Telesecundaria - Galería de Alumnos</h1>
         
         <div class="welcome">
             <h2>👋 ¡Bienvenidos!</h2>
             <p style="margin-top: 10px; color: #666;">Aquí encontrarás todas las fotos, videos y archivos compartidos por tus profesores</p>
+            <button onclick="loadGallery()" class="refresh-btn">🔄 Actualizar</button>
         </div>
 
         <div class="filter-bar">
-            <button class="filter-btn active" onclick="filterGallery('all')">📁 Todos</button>
+            <button class="filter-btn active" onclick="filterGallery('all')">📋 Todos</button>
             <button class="filter-btn" onclick="filterGallery('image')">🖼️ Fotos</button>
             <button class="filter-btn" onclick="filterGallery('video')">🎬 Videos</button>
             <button class="filter-btn" onclick="filterGallery('raw')">📄 Documentos</button>
@@ -220,18 +252,20 @@
     </div>
 
     <script>
-        const CLOUD_NAME = 'dfjsi5qq9';
         let allFiles = [];
         let currentFilter = 'all';
 
         async function loadGallery() {
-            // Cargar desde localStorage (archivos subidos por profesores)
-            const uploadedFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-            
-            setTimeout(() => {
-                allFiles = uploadedFiles;
+            try {
+                const result = await window.storage.get('telesecundaria-files', true);
+                allFiles = result ? JSON.parse(result.value) : [];
+                console.log('Archivos cargados:', allFiles.length);
                 displayGallery(allFiles);
-            }, 500);
+            } catch (error) {
+                console.log('No hay archivos aún');
+                allFiles = [];
+                displayGallery([]);
+            }
         }
 
         function displayGallery(files) {
@@ -240,7 +274,7 @@
             if (files.length === 0) {
                 gallery.innerHTML = `
                     <div class="empty" style="grid-column: 1/-1;">
-                        <div class="empty-icon">📭</div>
+                        <div class="empty-icon">🔭</div>
                         <h2>No hay archivos todavía</h2>
                         <p style="margin-top: 10px;">Los profesores subirán contenido pronto</p>
                     </div>
@@ -295,13 +329,11 @@
         function filterGallery(type) {
             currentFilter = type;
             
-            // Actualizar botones activos
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
             event.target.classList.add('active');
 
-            // Filtrar archivos
             if (type === 'all') {
                 displayGallery(allFiles);
             } else {
